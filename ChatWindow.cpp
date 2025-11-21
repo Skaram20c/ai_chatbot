@@ -3,8 +3,13 @@
 #include "GradientLabel.h"
 #include "ChatBubble.h"
 #include "SidebarWidget.h"
+#include "NotificationSender.h"
+#include "ChatPDFExporter.h"
+
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QProcess>
+#include <QDebug>
 #include <QRegularExpression>
 #include <QGraphicsDropShadowEffect>
 #include <QPushButton>
@@ -22,8 +27,8 @@ ChatWindow::ChatWindow(QWidget *parent)
 
     faqSystem.loadFromFile("cleaned_full_dataset.csv");
     //faqSystem.setApiUrl("http://localhost:5678/webhook-test/student_bot");
-    faqSystem.setApiUrl("http://localhost:5678/webhook/ai_chatbot");
-    //faqSystem.setApiUrl("https://clerkly-unpresumptive-yolando.ngrok-free.dev/predict");
+    //faqSystem.setApiUrl("http://localhost:5678/webhook-test/ai_chatbot");
+    faqSystem.setApiUrl("https://clerkly-unpresumptive-yolando.ngrok-free.dev/predict");
 }
 
 ChatWindow::~ChatWindow() {}
@@ -407,22 +412,45 @@ void ChatWindow::onChatSelected(int index)
 
 void ChatWindow::sendChatToEmail(int index)
 {
-    if (index < 0 || index >= chatSessions.size()) return;
+    if (index < 0 || index >= chatSessions.size())
+        return;
 
     ChatSession &session = chatSessions[index];
 
-    QString body;
-    for (auto &m : session.messages)
-        body += m + "\n";
+    // 1. Build QVector<ChatMessage> from your saved chat
+    QVector<ChatMessage> pdfMessages;
 
-    QString cmd =
-        "curl -X POST https://your-n8n-url/webhook/chat-email "
-        "-H \"Content-Type: application/json\" "
-        "-d '{\"title\":\"" + session.title +
-        "\",\"body\":\"" + body.replace("\"", "\\\"") + "\"}'";
+    for (const QString &m : chatSessions[currentChatIndex].messages)
+    {
+        bool isUser = m.startsWith("USER");
+        QString cleanText = m.section(':', 1).trimmed();
 
-    system(cmd.toStdString().c_str());
+        pdfMessages.append({ isUser, cleanText });
+    }
+
+    // 2. Generate PDF
+    ChatPDFExporter exporter;
+    QString pdfPath = "chat_transcript.pdf";
+
+    exporter.exportToPDF(
+        pdfPath,
+        userName,
+        pdfMessages
+        );
+
+    // 3. Notify via n8n
+    NotificationSender sender;
+    sender.setWebhookUrl("http://localhost:5678/webhook-test/chat-transcript");
+
+    sender.sendEmailWithAttachment(
+        pdfPath.toStdString(),
+        "skaram20c@gmail.com",
+        chatSessions[currentChatIndex].title.toStdString(),
+        "Chat transcript attached."
+        );
 }
+
+
 
 void ChatWindow::clearChatArea()
 {
