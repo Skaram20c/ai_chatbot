@@ -23,7 +23,7 @@ ChatWindow::ChatWindow(QWidget *parent)
     faqSystem.loadFromFile("cleaned_full_dataset.csv");
     //faqSystem.setApiUrl("http://localhost:5678/webhook-test/student_bot");
     faqSystem.setApiUrl("http://localhost:5678/webhook/ai_chatbot");
-    //faqSystem.setApiUrl("https://clerkly-unpresumptive-yolando.ngrok-free.dev");
+    //faqSystem.setApiUrl("https://clerkly-unpresumptive-yolando.ngrok-free.dev/predict");
 }
 
 ChatWindow::~ChatWindow() {}

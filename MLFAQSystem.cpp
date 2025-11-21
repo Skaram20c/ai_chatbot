@@ -99,22 +99,6 @@ std::string MLFAQSystem::callMlApi(const std::string &userInput)
 
     std::string endpoint = apiURL;
 
-    if (isWebhookMode)
-    {
-        // n8n mode
-        endpoint = apiURL;  // EXACT webhook URL, DO NOT add /predict
-    }
-    else
-    {
-        // Colab ML mode
-        endpoint = apiURL;
-
-        if (endpoint.back() == '/')
-            endpoint += "predict";
-        else
-            endpoint += "/predict";
-    }
-
     std::string cmd =
         "curl -s -X POST -H \"Content-Type: application/json\" "
         "-d \"{\\\"query\\\":\\\"" + userInput + "\\\"}\" "
