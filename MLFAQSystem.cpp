@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdio>
 #include "json.hpp"
+
 using json = nlohmann::json;
 
 
@@ -97,10 +98,22 @@ std::string MLFAQSystem::callMlApi(const std::string &userInput)
         return "__ML_ERROR__";
 
     std::string endpoint = apiURL;
-    if (endpoint.back() == '/')
-        endpoint += "predict";
+
+    if (isWebhookMode)
+    {
+        // n8n mode
+        endpoint = apiURL;  // EXACT webhook URL, DO NOT add /predict
+    }
     else
-        endpoint += "/predict";
+    {
+        // Colab ML mode
+        endpoint = apiURL;
+
+        if (endpoint.back() == '/')
+            endpoint += "predict";
+        else
+            endpoint += "/predict";
+    }
 
     std::string cmd =
         "curl -s -X POST -H \"Content-Type: application/json\" "
@@ -126,46 +139,67 @@ std::string MLFAQSystem::callMlApi(const std::string &userInput)
     if (!result.empty() && result.back() == '\n')
         result.pop_back();
 
+    //return result;
     try {
         json j = json::parse(result);
-        return j.dump();  // return full JSON to ask()
+        return result;  // return full JSON to ask()
     }
     catch (...) {
         return "__ML_ERROR__";
     }
 }
 
-
 std::string MLFAQSystem::ask(const std::string &userInput)
 {
+    // 1. Call ML (n8n or Colab)
     std::string ml_raw = callMlApi(userInput);
 
-    // If ML could not return anything → fallback
-    if (ml_raw == "__ML_ERROR__" || ml_raw.empty())
-        return callOpenAI(userInput);
+    if (ml_raw == "__ML_ERROR__" || ml_raw.empty()) {
+        std::string aiAns = callOpenAI(userInput);
+        return aiAns.empty() ? fallbackCSV(userInput) : aiAns;
+    }
 
     json j;
     try {
         j = json::parse(ml_raw);
     }
     catch (...) {
-        return callOpenAI(userInput);
+        std::string aiAns = callOpenAI(userInput);
+        return aiAns.empty() ? fallbackCSV(userInput) : aiAns;
     }
 
-    // If ML requests fallback (low confidence, no dataset match)
-    if (j.contains("fallback") && j["fallback"].get<bool>() == true)
-        return callOpenAI(userInput);
+    // 2. Handle fallback properly
+    bool isFallback = false;
 
-    // If ML has a proper response
-    if (j.contains("response"))
+    if (j.contains("fallback"))
+    {
+        if (j["fallback"].is_boolean())
+            isFallback = j["fallback"].get<bool>();
+
+        else if (j["fallback"].is_string())
+        {
+            std::string f = j["fallback"].get<std::string>();
+            std::transform(f.begin(), f.end(), f.begin(), ::tolower);
+            isFallback = (f == "true");
+        }
+    }
+
+    if (isFallback)
+    {
+        std::string aiAns = callOpenAI(userInput);
+        return aiAns.empty() ? fallbackCSV(userInput) : aiAns;
+    }
+
+    // fallback = false, check for response
+    if (j.contains("response") && j["response"].is_string()) {
         return j["response"].get<std::string>();
-
-    // Unexpected format → fallback to OpenAI
-    return callOpenAI(userInput);
+    }
+    std::string aiAns = callOpenAI(userInput);
+    return aiAns.empty() ? fallbackCSV(userInput) : aiAns;
 }
-
 
 std::string MLFAQSystem::callOpenAI(const std::string &question)
 {
     return OpenAIFallback::askOpenAI(question);
 }
+

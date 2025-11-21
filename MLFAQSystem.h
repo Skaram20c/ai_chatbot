@@ -37,6 +37,7 @@ public:
 private:
     std::string apiURL;
     std::vector<FAQ> data;
+    bool isWebhookMode = true;
 };
 
 #endif
