@@ -194,6 +194,12 @@ std::string MLFAQSystem::ask(const std::string &userInput)
     if (j.contains("response") && j["response"].is_string()) {
         return j["response"].get<std::string>();
     }
+
+    // Alternative naming (e.g., n8n returns "answer")
+    if (j.contains("answer") && j["answer"].is_string()) {
+        return j["answer"].get<std::string>();
+    }
+
     std::string aiAns = callOpenAI(userInput);
     return aiAns.empty() ? fallbackCSV(userInput) : aiAns;
 }
