@@ -9,16 +9,16 @@
 #define pclose _pclose
 #endif
 
-NotificationSender::NotificationSender()
-{
-    webhookUrl = "";
-}
+// Constructor
+NotificationSender::NotificationSender() : webhookUrl("") {}
 
+// Set Webhook URL
 void NotificationSender::setWebhookUrl(const std::string &url)
 {
     webhookUrl = url;
 }
 
+// Escape JSON safely
 std::string NotificationSender::escapeJson(const std::string &s)
 {
     std::string out;
@@ -34,6 +34,7 @@ std::string NotificationSender::escapeJson(const std::string &s)
     return out;
 }
 
+// Send email through JSON POST request
 bool NotificationSender::sendEmailNotification(const std::vector<std::string> &chatHistory,
                                                const std::string &userEmail,
                                                const std::string &subject)
@@ -81,6 +82,7 @@ bool NotificationSender::sendEmailNotification(const std::vector<std::string> &c
     return true;  // You could also check for specific success response
 }
 
+// Send PDF attachment using multipart/form-data (curl)
 bool NotificationSender::sendEmailWithAttachment(const std::string &filePath,
                                                  const std::string &email,
                                                  const std::string &subject,

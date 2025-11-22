@@ -9,9 +9,7 @@ SidebarWidget::SidebarWidget(QWidget *parent)
 {
     setStyleSheet("background:transparent;");
 
-    // ================================================
     // MAIN SIDEBAR CONTAINER (rounded, matches chat area)
-    // ================================================
     QWidget *mainContainer = new QWidget();
     mainContainer->setStyleSheet(
         "background:white;"
@@ -23,10 +21,7 @@ SidebarWidget::SidebarWidget(QWidget *parent)
     mainLayout->setContentsMargins(10, 12, 10, 12);
     mainLayout->setSpacing(5);
 
-
-    // ================================================
     // NEW CHAT BUTTON (unchanged — matches your GUI)
-    // ================================================
     newChatBtn = new QPushButton("New Chat");
     newChatBtn->setStyleSheet(
         "background:#0086C7;"
@@ -37,11 +32,7 @@ SidebarWidget::SidebarWidget(QWidget *parent)
         );
     connect(newChatBtn, &QPushButton::clicked, this, &SidebarWidget::newChatRequested);
 
-
-
-    // ================================================
     // NEW INNER CONTAINER (GROUP: Chat History & List)
-    // ================================================
     QWidget *historyGroup = new QWidget();
     historyGroup->setStyleSheet(
         "background:white;"
@@ -56,11 +47,7 @@ SidebarWidget::SidebarWidget(QWidget *parent)
     historyGroupLayout->setContentsMargins(10, 10, 10, 10);
     historyGroupLayout->setSpacing(10);
 
-
-
-    // ================================================
     // CHAT HISTORY BUTTON (your style — light blue)
-    // ================================================
     chatHistoryBtn = new QPushButton("Chat History");
     chatHistoryBtn->setStyleSheet(
         "color:#0086C7;"
@@ -70,11 +57,7 @@ SidebarWidget::SidebarWidget(QWidget *parent)
         );
     chatHistoryBtn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-
-
-    // ================================================
     // CHAT LIST CARD (flat, no curves, touches bottom)
-    // ================================================
     QWidget *chatListCard = new QWidget();
     chatListCard->setStyleSheet(
         "background:white;"
@@ -90,11 +73,7 @@ SidebarWidget::SidebarWidget(QWidget *parent)
     chatListLayout->setContentsMargins(0, 0, 0, 0);
     chatListLayout->setSpacing(0);
 
-
-
-    // ================================================
     // CHAT LIST (scrollable)
-    // ================================================
     historyList = new QListWidget();
     historyList->setStyleSheet(
         "QListWidget { border:none; background:transparent; }"
@@ -102,7 +81,6 @@ SidebarWidget::SidebarWidget(QWidget *parent)
         "QListWidget::item:hover { background:#F3F9FF; }"
         "QListWidget::item:selected { background:#E6F4FF; color:#0086C7; }"
         );
-
     connect(historyList, &QListWidget::itemClicked,
             this, &SidebarWidget::onChatClicked);
 
@@ -112,19 +90,11 @@ SidebarWidget::SidebarWidget(QWidget *parent)
 
     chatListLayout->addWidget(historyList);
 
-
-
-    // ================================================
     // ASSEMBLE INNER GROUP (History Button + List)
-    // ================================================
     historyGroupLayout->addWidget(chatHistoryBtn);
     historyGroupLayout->addWidget(chatListCard, 1);   // fills space to bottom
 
-
-
-    // ================================================
     // FINAL LAYOUT
-    // ================================================
     mainLayout->addWidget(newChatBtn);
     mainLayout->addWidget(historyGroup, 1);           // inner container grows
 
@@ -134,7 +104,6 @@ SidebarWidget::SidebarWidget(QWidget *parent)
 }
 
 // Add new chat into history list
-//
 void SidebarWidget::addChatItem(const QString &title, int index)
 {
     QListWidgetItem *item = new QListWidgetItem(title);
@@ -142,9 +111,7 @@ void SidebarWidget::addChatItem(const QString &title, int index)
     historyList->addItem(item);
 }
 
-//
 // Update a chat title (optional)
-//
 void SidebarWidget::updateChatTitle(int index, const QString &title)
 {
     for (int i = 0; i < historyList->count(); i++) {
@@ -156,23 +123,20 @@ void SidebarWidget::updateChatTitle(int index, const QString &title)
     }
 }
 
+// Clears chat list completely
 void SidebarWidget::clearChats()
 {
     historyList->clear();
 }
 
-//
 // When a chat is clicked
-//
 void SidebarWidget::onChatClicked(QListWidgetItem *item)
 {
     int index = item->data(Qt::UserRole).toInt();
     emit chatSelected(index);
 }
 
-//
 // Context menu (right-click)
-//
 void SidebarWidget::onContextMenuRequested(const QPoint &pos)
 {
     QListWidgetItem *item = historyList->itemAt(pos);
@@ -197,6 +161,7 @@ void SidebarWidget::onContextMenuRequested(const QPoint &pos)
     }
 }
 
+// Remove chat entry & adjust indices of remaining items
 void SidebarWidget::removeChat(int index)
 {
     // Find item with matching index

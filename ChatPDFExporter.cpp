@@ -7,6 +7,19 @@
 
 ChatPDFExporter::ChatPDFExporter() {}
 
+// ---- PDF Layout Constants ----
+static const int TOP_MARGIN = 60;
+static const int SIDE_MARGIN = 90;
+static const int HEADER_TEXT_SIZE = 100;
+static const int SUBTITLE_HEIGHT = 70;
+static const int MESSAGE_SPACING = 40;
+static const int AVATAR_SIZE = 64;
+static const int BUBBLE_PADDING = 16;
+static const int BUBBLE_RADIUS = 22;
+
+/**
+ *  Export Chat → PDF
+ */
 bool ChatPDFExporter::exportToPDF(const QString &filePath,
                                   const QString &studentName,
                                   const QVector<ChatMessage> &messages)
@@ -15,114 +28,128 @@ bool ChatPDFExporter::exportToPDF(const QString &filePath,
     pdf.setPageSize(QPageSize(QPageSize::A4));
     pdf.setResolution(300);
 
-    QPainter p(&pdf);
-    p.setRenderHint(QPainter::Antialiasing);
+    QPainter paint(&pdf);
+    paint.setRenderHint(QPainter::Antialiasing);
 
-    int margin = 80;
-    int y = margin;
+    int y = TOP_MARGIN;
 
-    // ---- HEADER ----
-    QFont headerFont("Segoe UI", 26, QFont::Bold);
-    p.setFont(headerFont);
-    p.drawText(0, y, pdf.width(), 50,
-               Qt::AlignHCenter,
-               "Student Chat Transcript");
-    y += 60;
+    // ---- Header Section ----
+    paint.setFont(QFont("Ariel", 16, QFont::Bold));
+    paint.drawText(0, y, pdf.width(), HEADER_TEXT_SIZE, Qt::AlignCenter, "AI Companion Chat Script");
+    y += HEADER_TEXT_SIZE;
 
-    QFont subFont("Segoe UI", 13);
-    p.setFont(subFont);
+    // NAME + TIMESTAMP
+    QString subtitle = QString("Generated for: %1\n%2")
+                           .arg(studentName)
+                           .arg(QDateTime::currentDateTime().toString("MMMM dd, yyyy 'at' hh:mm AP"));
 
-    QString info = QString("Generated for: %1\n%2")
-                       .arg(studentName)
-                       .arg(QDateTime::currentDateTime().toString("MMMM dd, yyyy 'at' hh:mm AP"));
+    paint.setFont(QFont("Ariel", 10));
+    paint.drawText(0, y, pdf.width(), y , Qt::AlignCenter, subtitle);
+    y += HEADER_TEXT_SIZE + SUBTITLE_HEIGHT;
 
-    p.drawText(0, y, pdf.width(), 60, Qt::AlignHCenter, info);
-    y += 100;
+    // Page width for bubble layout
+    int pageWidth = pdf.width() - SIDE_MARGIN * 2;
 
-    int pageWidth = pdf.width() - margin * 2;
-
-    // ---- MESSAGES ----
-    for (const auto &msg : messages)
+    for (const ChatMessage &m : messages)
     {
-        drawMessage(p, msg, y, pageWidth);
+        int bubbleHeight = drawMessage(paint, m, y, pageWidth);
+        y += bubbleHeight + MESSAGE_SPACING;
 
-        if (y > pdf.height() - 200) {
+        if (y > pdf.height() - 250) {
             pdf.newPage();
-            y = margin;
+            y = TOP_MARGIN;
         }
     }
-
-    p.end();
+    paint.end();
     return true;
 }
-void ChatPDFExporter::drawMessage(QPainter &p,
+
+/**
+ *  Draw Header section (Title + Student Name + Timestamp)
+ */
+int ChatPDFExporter::drawMessage(QPainter &p,
                                   const ChatMessage &msg,
                                   int &y,
                                   int pageWidth)
 {
-    int avatarSize = 55;
-    int bubbleMaxW = pageWidth * 0.70;
-    int bubblePadding = 20;
+    // Instead calculate real PDF A4 width at 300dpi
+    QPdfWriter *writer = static_cast<QPdfWriter*>(p.device());
+    QRect pageRect = writer->pageLayout().fullRectPixels(writer->resolution());
+    int pdfWidth = pageRect.width();
 
-    QString avatarPath = msg.isUser
-                             ? ":/images/user.jpg"
-                             : ":/images/ai.jpg";
+    int usableWidth = pdfWidth - (SIDE_MARGIN * 2) - AVATAR_SIZE - 40;
 
+    // Load avatar
+    QString avatarPath = msg.isUser ? ":/images/user.jpg" : ":/images/ai.jpg";
     QImage avatar(avatarPath);
-    QImage scaledAvatar = avatar.scaled(avatarSize, avatarSize,
-                                        Qt::KeepAspectRatio,
-                                        Qt::SmoothTransformation);
+    avatar = avatar.scaled(AVATAR_SIZE, AVATAR_SIZE, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-    int avatarX = msg.isUser ? 120 : 80;
-    int bubbleX = msg.isUser ? 200 : 160;
+    int avatarX = msg.isUser
+                      ? SIDE_MARGIN
+                      : (pdfWidth - SIDE_MARGIN - AVATAR_SIZE);
 
-    // Draw avatar
-    p.drawImage(avatarX, y + 10, scaledAvatar);
+    int bubbleX, maxTextWidth;
+
+    // USER bubble = left side
+    if (msg.isUser) {
+        bubbleX = avatarX + AVATAR_SIZE + 20;
+        maxTextWidth = usableWidth;
+    }
+    // AI bubble = right side
+    else {
+        maxTextWidth = usableWidth;
+        bubbleX = pdfWidth - SIDE_MARGIN - AVATAR_SIZE - 40 - maxTextWidth;
+    }
 
     // Colors
-    QColor bubbleColor = msg.isUser
-                             ? QColor("#4A90E2")     // user bubble blue
-                             : QColor("#FFF4C6");    // AI soft yellow
+    QColor bubbleColor = msg.isUser ? QColor("#4A90E2") : QColor("#FFF1C6");
+    QColor textColor   = msg.isUser ? Qt::white       : Qt::black;
 
-    QColor textColor = msg.isUser
-                           ? QColor("#FFFFFF")
-                           : QColor("#000000");
+    // Draw avatar
+    p.drawImage(avatarX, y, avatar);
 
-    p.setPen(Qt::NoPen);
+    QRect rawTextRect = wrapText(p, msg.text, maxTextWidth);
+
+    // Now place it where you actually want:
+    QRect textRect(
+        bubbleX + BUBBLE_PADDING,
+        y + BUBBLE_PADDING,
+        rawTextRect.width(),
+        rawTextRect.height()
+        );
+
+    // Use the calculated height of the text for the bubble
+    QRect bubbleRect = textRect.adjusted(-BUBBLE_PADDING,
+                                         -BUBBLE_PADDING,
+                                         BUBBLE_PADDING,
+                                         BUBBLE_PADDING);
+
     p.setBrush(bubbleColor);
+    p.setPen(Qt::NoPen);
+    p.drawRoundedRect(bubbleRect, BUBBLE_RADIUS, BUBBLE_RADIUS);
 
-    // ---- Text wrapping ----
-    p.setFont(QFont("Segoe UI", 12));
-    QRect textRect = wrapText(p, msg.text, bubbleX + bubblePadding,
-                              y + bubblePadding, bubbleMaxW);
-
-    QRect bubbleRect = textRect.adjusted(-bubblePadding,
-                                         -bubblePadding,
-                                         bubblePadding,
-                                         bubblePadding);
-
-    // Rounded bubble
-    p.drawRoundedRect(bubbleRect, 22, 22);
-
-    // Draw text on top
     p.setPen(textColor);
     p.drawText(textRect, msg.text);
 
-    // move down for next message
-    y = bubbleRect.bottom() + 35;
+    return bubbleRect.height();
 }
 
+/**
+ *  Compute wrapped text bounding box
+ */
 QRect ChatPDFExporter::wrapText(QPainter &p,
                                 const QString &text,
-                                int x,
-                                int y,
                                 int maxWidth)
 {
     QFontMetrics fm(p.font());
-    QRect rect = fm.boundingRect(x, y,
-                                 maxWidth,
-                                 10000, // allow long messages
-                                 Qt::TextWordWrap,
-                                 text);
+
+    // Always measure text at origin (0,0)
+    QRect rect = fm.boundingRect(
+        QRect(0, 0, maxWidth, INT_MAX),
+        Qt::TextWordWrap,
+        text
+        );
+
     return rect;
 }
+

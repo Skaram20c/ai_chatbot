@@ -5,17 +5,28 @@
 #include <QListWidget>
 #include <QLineEdit>
 #include <QScrollArea>
-#include <qboxlayout.h>
-#include <qpushbutton.h>
+#include <QVBoxLayout>
+#include <QPushButton>
 #include "MLFAQSystem.h"
 #include "SidebarWidget.h"
 
+
 struct ChatSession
 {
-    QString title;
-    QList<QString> messages;     // Store all messages in sequence
+    QString title;                 ///< Chat session title
+    QList<QString> messages;       ///< Each entry: "USER: text" or "AI: text"
 };
 
+/**
+ * @brief Main chat interface window for the AI Companion.
+ *
+ * Handles:
+ *  - Chat UI (bubbles, scroll area, input bar)
+ *  - ML model query integration
+ *  - Chat session management (new, rename, delete, select)
+ *  - Export to PDF + email sending via n8n
+ *  - User name capture on first message
+ */
 class ChatWindow : public QMainWindow
 {
     Q_OBJECT
@@ -25,12 +36,14 @@ public:
     ~ChatWindow();
 
 private:
+    /// ---------- UI Builders ----------
     void setupUI();
     QWidget *buildTopBar();
     QWidget *buildSidebar();
     QWidget *buildChatArea();
     QWidget *buildInputBar();
 
+    /// Clears all chat bubbles from the chat layout
     void clearChatArea();
 
 private slots:

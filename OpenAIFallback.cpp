@@ -19,8 +19,10 @@ std::string OpenAIFallback::escapeJson(const std::string &input)
     return out;
 }
 
+// Main OpenAI Fallback Handler
 std::string OpenAIFallback::askOpenAI(const std::string &question)
 {
+    // CHECK API KEY in the Operating System
     const char *key = std::getenv("OPENAI_API_KEY");
     if (!key)
         return "OpenAI API key missing.";
@@ -41,7 +43,7 @@ std::string OpenAIFallback::askOpenAI(const std::string &question)
     std::string result;
     char buffer[512];
 
-    FILE *pipe = popen(cmd.c_str(), "r");
+    FILE *pipe = popen(cmd.c_str(), "r");               // EXECUTE CURL (SAFELY)
     if (!pipe)
         return "OpenAI request failed.";
 

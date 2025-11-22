@@ -15,16 +15,13 @@ using json = nlohmann::json;
 #define pclose _pclose
 #endif
 
-MLFAQSystem::MLFAQSystem()
-{
-    apiURL = "";
-}
+// Constructor
+MLFAQSystem::MLFAQSystem() : apiURL("") {}
 
-void MLFAQSystem::setApiUrl(const std::string &url)
-{
-    apiURL = url;
-}
+// Set ML API Endpoint
+void MLFAQSystem::setApiUrl(const std::string &url) { apiURL = url; }
 
+// Function to lowercase the string
 std::string MLFAQSystem::toLower(const std::string &s)
 {
     std::string r = s;
@@ -33,6 +30,7 @@ std::string MLFAQSystem::toLower(const std::string &s)
     return r;
 }
 
+// Function to split the words
 std::vector<std::string> MLFAQSystem::splitWords(const std::string &s)
 {
     std::vector<std::string> words;
@@ -42,6 +40,7 @@ std::vector<std::string> MLFAQSystem::splitWords(const std::string &s)
     return words;
 }
 
+// Load CSV fallback data
 void MLFAQSystem::loadFromFile(const std::string &filename)
 {
     std::ifstream file(filename);
@@ -67,6 +66,7 @@ void MLFAQSystem::loadFromFile(const std::string &filename)
     }
 }
 
+// CSV Matcher Fallback
 std::string MLFAQSystem::fallbackCSV(const std::string &userInput)
 {
     auto words = splitWords(toLower(userInput));
@@ -92,6 +92,7 @@ std::string MLFAQSystem::fallbackCSV(const std::string &userInput)
     return bestAns;
 }
 
+// Call the ML Model via curl POST
 std::string MLFAQSystem::callMlApi(const std::string &userInput)
 {
     if (apiURL.empty())
@@ -133,9 +134,10 @@ std::string MLFAQSystem::callMlApi(const std::string &userInput)
     }
 }
 
+// Ask Model / OpenAI / CSV in fallback chain
 std::string MLFAQSystem::ask(const std::string &userInput)
 {
-    // 1. Call ML (n8n or Colab)
+    // Call ML model
     std::string ml_raw = callMlApi(userInput);
 
     if (ml_raw == "__ML_ERROR__" || ml_raw.empty()) {
@@ -152,7 +154,7 @@ std::string MLFAQSystem::ask(const std::string &userInput)
         return aiAns.empty() ? fallbackCSV(userInput) : aiAns;
     }
 
-    // 2. Handle fallback properly
+    // --- If ML returned fallback=true ----------
     bool isFallback = false;
 
     if (j.contains("fallback"))
@@ -188,6 +190,9 @@ std::string MLFAQSystem::ask(const std::string &userInput)
     return aiAns.empty() ? fallbackCSV(userInput) : aiAns;
 }
 
+/*
+ * OpenAI Fallback (requests external class)
+ */
 std::string MLFAQSystem::callOpenAI(const std::string &question)
 {
     return OpenAIFallback::askOpenAI(question);

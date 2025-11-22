@@ -1,22 +1,25 @@
 #include "ChatWindow.h"
+#include "ChatBubble.h"
+#include "EmailPromptDialog.h"
 #include "MainWindow.h"
 #include "GradientLabel.h"
-#include "ChatBubble.h"
 #include "SidebarWidget.h"
 #include "NotificationSender.h"
 #include "ChatPDFExporter.h"
+#include "AppConfig.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QProcess>
-#include <QDebug>
+#include <QInputDialog>
 #include <QRegularExpression>
 #include <QGraphicsDropShadowEffect>
-#include <QPushButton>
-#include <QLabel>
-#include <QInputDialog>
-#include <QScrollBar>
+#include <QMessageBox>
+#include <QDebug>
+#include <qscrollbar.h>
 
+/**
+ * @brief ChatWindow constructor: initializes UI and ML model.
+ */
 ChatWindow::ChatWindow(QWidget *parent)
     : QMainWindow(parent)
 {
@@ -26,9 +29,8 @@ ChatWindow::ChatWindow(QWidget *parent)
     setupUI();
 
     faqSystem.loadFromFile("cleaned_full_dataset.csv");
-    //faqSystem.setApiUrl("http://localhost:5678/webhook-test/student_bot");
-    //faqSystem.setApiUrl("http://localhost:5678/webhook-test/ai_chatbot");
-    faqSystem.setApiUrl("https://clerkly-unpresumptive-yolando.ngrok-free.dev/predict");
+    faqSystem.setApiUrl(AppConfig::getApiUrl().toStdString());
+
 }
 
 ChatWindow::~ChatWindow() {}
@@ -58,27 +60,17 @@ void ChatWindow::setupUI()
     mfShadow->setColor(QColor(0, 0, 0, 30));
     mainFrame->setGraphicsEffect(mfShadow);
 
+    // Build sub-components
     topBar = buildTopBar();
-
+    QWidget *chat = buildChatArea();
     sidebar = new SidebarWidget(this);
 
-    connect(sidebar, &SidebarWidget::newChatRequested,
-            this, &ChatWindow::onNewChatClicked);
-
-    connect(sidebar, &SidebarWidget::chatSelected,
-            this, &ChatWindow::onChatSelected);
-
-    connect(sidebar, &SidebarWidget::sendChatToEmailRequested,
-            this, &ChatWindow::sendChatToEmail);
-
-    connect(sidebar, &SidebarWidget::renameChatRequested,
-            this, &ChatWindow::onRenameChat);
-
-    connect(sidebar, &SidebarWidget::deleteChatRequested,
-            this, &ChatWindow::onDeleteChat);
-
-
-    QWidget *chat = buildChatArea();
+    // Sidebar signals
+    connect(sidebar, &SidebarWidget::newChatRequested, this, &ChatWindow::onNewChatClicked);
+    connect(sidebar, &SidebarWidget::chatSelected, this, &ChatWindow::onChatSelected);
+    connect(sidebar, &SidebarWidget::sendChatToEmailRequested, this, &ChatWindow::sendChatToEmail);
+    connect(sidebar, &SidebarWidget::renameChatRequested, this, &ChatWindow::onRenameChat);
+    connect(sidebar, &SidebarWidget::deleteChatRequested, this, &ChatWindow::onDeleteChat);
 
     // Layout for inside main frame
     QHBoxLayout *content = new QHBoxLayout();
@@ -99,9 +91,7 @@ void ChatWindow::setupUI()
     mainLay->addWidget(mainFrame);
 }
 
-//
 // TOP BAR (now flat + inside mainframe)
-//
 QWidget *ChatWindow::buildTopBar()
 {
     QWidget *bar = new QWidget();
@@ -113,18 +103,19 @@ QWidget *ChatWindow::buildTopBar()
         "border-top-right-radius:25px;"
         );
 
-    // No individual shadows on top bar anymore (matches reference)
-
+    // Back Button
     QPushButton *back = new QPushButton();
     back->setIcon(QIcon(":/images/back.jpg"));
     back->setIconSize(QSize(26, 26));
     back->setStyleSheet("border:none; padding:8px;");
     connect(back, &QPushButton::clicked, this, &ChatWindow::onBack);
 
+    // Title Label
     GradientLabel *title = new GradientLabel();
     title->setText("Laurentian Academic AI Companion");
     title->setFont(QFont("Segoe UI", 20, QFont::Black));
 
+    // Close Button (auto-export + email)
     QPushButton *closeBtn = new QPushButton();
     closeBtn->setIcon(QIcon(":/images/close1.jpg"));
     closeBtn->setIconSize(QSize(20, 20));
@@ -201,9 +192,7 @@ QWidget *ChatWindow::buildChatArea()
     return card;
 }
 
-//
 // INPUT BAR (clean and flat)
-//
 QWidget *ChatWindow::buildInputBar()
 {
     QWidget *bar = new QWidget();
@@ -244,14 +233,13 @@ void ChatWindow::onSendMessage()
     QString text = input->text().trimmed();
     if (text.isEmpty()) return;
 
-    // Ensure there is an active chat session
+    // Ensure a session exists
     if (currentChatIndex < 0) {
         ChatSession session;
         session.title = "Chat " + QString::number(chatSessions.size() + 1);
         chatSessions.push_back(session);
         currentChatIndex = chatSessions.size() - 1;
 
-        // Add to sidebar
         sidebar->addChatItem(session.title, currentChatIndex);
     }
 
@@ -267,29 +255,27 @@ void ChatWindow::onSendMessage()
     // Save user message to current chat
     chatSessions[currentChatIndex].messages.append("USER: " + text);
 
-    // ------------------------------------------------------------
-    // 1. FIRST MESSAGE MUST BE THE USER'S NAME
-    // ------------------------------------------------------------
+    // -----First message user's name ----------
     if (!userNameCaptured)
     {
         // Validate name
         QString attemptedName = text;
-
-        // Reject empty
-        if (attemptedName.trimmed().isEmpty()) {
-            chatLayout->addWidget(new ChatBubble(
-                "I didn't catch your name. Please tell me your name to continue",
-                ChatBubble::Incoming,
-                ":/images/ai.jpg"
-                ));
-            return;
-        }
 
         // Reject numbers and symbols
         QRegularExpression onlyLetters("^[A-Za-z][A-Za-z\\s'-]*$");
         if (!onlyLetters.match(attemptedName).hasMatch()) {
             chatLayout->addWidget(new ChatBubble(
                 "Invalid name. Please enter a valid name using letters only.",
+                ChatBubble::Incoming,
+                ":/images/ai.jpg"
+                ));
+            return;
+        }
+
+        // Reject empty
+        if (attemptedName.trimmed().isEmpty()) {
+            chatLayout->addWidget(new ChatBubble(
+                "I didn't catch your name. Please enter name to continue!",
                 ChatBubble::Incoming,
                 ":/images/ai.jpg"
                 ));
@@ -312,9 +298,7 @@ void ChatWindow::onSendMessage()
         return;
     }
 
-    // ------------------------------------------------------------
-    // 2. AFTER NAME: SEND QUERY TO ML MODEL
-    // ------------------------------------------------------------
+    // ---------- Step 2: Query the ML model ----------
     std::string result = faqSystem.ask(text.toStdString());
     QString answer = QString::fromStdString(result);
 
@@ -329,24 +313,17 @@ void ChatWindow::onSendMessage()
 
     chatLayout->addStretch();
 
+    // Auto scroll bottom
     chatScroll->verticalScrollBar()->setValue(
         chatScroll->verticalScrollBar()->maximum()
         );
 }
 
-
-void ChatWindow::onBack()
-{
-    MainWindow *mw = new MainWindow();
-    mw->show();
-    close();
-}
-
-void ChatWindow::onCloseClicked()
-{
-    close();
-}
-
+/**
+ * =====================================================================
+ *  Chat Session Actions (New, Select, Rename, Delete)
+ * =====================================================================
+ */
 void ChatWindow::onNewChatClicked()
 {
     ChatSession session;
@@ -415,9 +392,19 @@ void ChatWindow::sendChatToEmail(int index)
     if (index < 0 || index >= chatSessions.size())
         return;
 
+    // Prompt dialog for username/email
+    EmailPromptDialog dialog(userName, this);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    // Update username if edited
+    userName = dialog.getUserName();
+    QString email = dialog.getEmail();
+
     ChatSession &session = chatSessions[index];
 
-    // 1. Build QVector<ChatMessage> from your saved chat
+    // Build PDF message vector
     QVector<ChatMessage> pdfMessages;
 
     for (const QString &m : chatSessions[currentChatIndex].messages)
@@ -428,30 +415,36 @@ void ChatWindow::sendChatToEmail(int index)
         pdfMessages.append({ isUser, cleanText });
     }
 
-    // 2. Generate PDF
+     // Export PDF
     ChatPDFExporter exporter;
     QString pdfPath = "chat_transcript.pdf";
 
-    exporter.exportToPDF(
-        pdfPath,
-        userName,
-        pdfMessages
-        );
+    try {
+        exporter.exportToPDF(pdfPath, userName, pdfMessages);
+    }
+    catch (...) {
+        QMessageBox::critical(this, "Error", "Failed to generate PDF.");
+        return;
+    }
 
-    // 3. Notify via n8n
+   // Send via webhook
     NotificationSender sender;
-    sender.setWebhookUrl("http://localhost:5678/webhook-test/chat-transcript");
+    sender.setWebhookUrl("http://localhost:5678/webhook/chat-transcript");
 
-    sender.sendEmailWithAttachment(
-        pdfPath.toStdString(),
-        "skaram20c@gmail.com",
-        chatSessions[currentChatIndex].title.toStdString(),
-        "Chat transcript attached."
-        );
+    try {
+        sender.sendEmailWithAttachment(
+            pdfPath.toStdString(),
+            email.toStdString(),
+            chatSessions[currentChatIndex].title.toStdString(),
+            "Chat transcript attached."
+            );
+    }
+    catch (...) {
+        QMessageBox::critical(this, "Email Error", "Unable to send chat transcript.");
+    }
 }
 
-
-
+// Clear Chat Layout Helper
 void ChatWindow::clearChatArea()
 {
     QLayoutItem *child;
@@ -513,4 +506,21 @@ void ChatWindow::onDeleteChat(int index)
 
     currentChatIndex = index;
     onChatSelected(currentChatIndex);
+}
+
+void ChatWindow::onBack()
+{
+    MainWindow *mw = new MainWindow();
+    mw->show();
+    close();
+}
+
+void ChatWindow::onCloseClicked()
+{
+    // If there is an active chat, export & send it
+    if (currentChatIndex >= 0)
+        sendChatToEmail(currentChatIndex);
+
+    // Close the window afterward
+    close();
 }

@@ -46,6 +46,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         OpenAIFallback.h OpenAIFallback.cpp
         NotificationSender.h NotificationSender.cpp
         ChatPDFExporter.h ChatPDFExporter.cpp
+        EmailPromptDialog.h EmailPromptDialog.cpp
 
     )
 else()

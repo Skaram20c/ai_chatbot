@@ -7,6 +7,22 @@
 #include <QMenu>
 #include <qlabel.h>
 
+/**
+ * @brief Sidebar navigation widget used inside ChatWindow.
+ *
+ * Contains:
+ *  - "New Chat" button
+ *  - Chat history header
+ *  - Scrollable list of chat sessions
+ *  - Context menu for per-chat actions
+ *
+ * Signals are emitted back to ChatWindow for:
+ *  - Starting new chat
+ *  - Switching sessions
+ *  - Emailing transcript
+ *  - Renaming session
+ *  - Deleting session
+ */
 class SidebarWidget : public QWidget
 {
     Q_OBJECT
