@@ -15,15 +15,7 @@
 - [Features](#features)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Setup Instructions](#setup-instructions)
-  - [ML Backend (Google Colab)](#ml-backend-google-colab)
-  - [Qt Frontend](#qt-frontend)
-  - [n8n Workflow Setup](#n8n-workflow-setup)
 - [API Endpoints](#api-endpoints)
-- [Screenshots](#screenshots)
-- [PDF Export Example](#pdf-export-example)
-- [Known Issues](#known-issues)
 - [Future Improvements](#future-improvements)
 - [Contributors](#contributors)
 - [License](#license)
@@ -101,3 +93,85 @@ This project demonstrates full-stack integration between C++/Qt, Python ML, REST
                   └────────────────────────┘
                   
 
+
+---
+
+# 🛠️ **Tech Stack**
+
+### **Frontend**
+- C++17  
+- Qt 6 (Widgets, QPainter, QPdfWriter)
+
+### **Backend**
+- Python 3.10  
+- Flask API  
+- scikit-learn  
+- pandas, numpy, joblib  
+
+### **Automation**
+- n8n  
+- OpenAI GPT API  
+- Gmail API Integration
+
+### **Tools**
+- Google Colab  
+- Ngrok  
+- GitHub
+
+
+---
+
+# 📡 API Endpoints
+
+### **POST /predict**
+
+This endpoint receives a user query from the Qt Application and returns either:
+
+- A direct ML-based response  
+- Or a fallback response generated through n8n + OpenAI
+
+**Request**
+```json
+{
+  "query": "How do I apply for OSAP?"
+}
+```
+
+**Response (ML Success)**
+```json
+{
+  "fallback": false,
+  "response": "You can apply for OSAP at ontario.ca/osap..."
+}
+```
+
+**Response Fallback**
+```json
+{
+  "fallback": true,
+  "response": "Data not available!"
+}
+```
+
+# ⚠️ Known Issues
+- Ngrok free-tier tunnels expire frequently and break API connection.
+- Long messages may overflow the bubble layout.
+- n8n workflow must remain active for fallback to function.
+- Dataset quality directly affects ML classification accuracy.
+
+# 🛠️ Future Improvements
+
+- Deploy ML backend to cloud (Railway / Render / AWS / GCP).
+- Add voice input using speech-to-text.
+- Add text-to-speech for AI response speaking.
+- Add user accounts with cloud-based sync.
+- Implement dark mode + customizable themes.
+- Expand dataset to 2000–5000 FAQs.
+- Replace ngrok with a domain + SSL.
+- Add chatbot analytics dashboard for admin.
+
+# 👥 Contributors
+
+Karam Singh    - Lead I    
+Pooja Bera     - Lead II   
+Deepan Bhatta  - Lead III 
