@@ -17,8 +17,7 @@
 - [Tech Stack](#tech-stack)
 - [API Endpoints](#api-endpoints)
 - [Future Improvements](#future-improvements)
-- [Contributors](#contributors)
-- [License](#license)
+- [Contributors/Developers](#contributors/Developers)
 
 ---
 
