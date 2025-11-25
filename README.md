@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10-yellow)
 ![n8n](https://img.shields.io/badge/n8n-Automation-orange)
 ![OpenAI](https://img.shields.io/badge/OpenAI-Fallback-purple)
-![License: OPEN](https://img.shields.io/badge/License-MIT-lightgrey)
+![License: OPEN](https://img.shields.io/badge/License-OPEN-lightgrey)
 
 ---
 
